@@ -1,0 +1,36 @@
+https://www.domaintools.com/content/The_DomainTools_Report_Distribution_Malicious_Domain.pdf
+
+выше аверейдж берем
+
+https://arxiv.org/pdf/2003.05703.pdf:
+1. second level domain length !
+2. unique chars number +
+3. unique chars numb in tld
+4. flag_dga +
+5. bool value if first is number +
+6. cons_dig_ratio +
+7. repcharratio +
+
+https://www.researchgate.net/publication/342581282_Ef..
+1. ratio of special symbols -
+
+http://faculty.washington.edu/mdecock/papers/rsivagur..
+Longest Consonant Sequence in SLD
+
+https://arxiv.org/pdf/1905.01078.pdf mb
+https://arxiv.org/pdf/2003.05703.pdf - tut est
+gini?
+
+
+
+https://core.ac.uk/download/pdf/237011209.pdf - 10 nxdomainов
+
+O:BAG:SYD:(A;;0xf0005;;;SY)(A;;0x5;;;BA)(A;;0x1;;;S-1-5-32-573)
+
+
+
+http://www.covert.io/getting-started-with-dga-research/ - закинуть запросы на кучу имен
+
+
+
+https://arxiv.org/pdf/2003.05703.pdf - ttl???
