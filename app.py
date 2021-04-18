@@ -425,12 +425,19 @@ def featureImportanceCalc():
     q = 3
     
 
+
+
+
 def ROC_curve(clf, x, y):
     probs = clf.predict_proba(x)
-    preds = probs[:,1]
-    fpr, tpr, threshold = metrics.roc_curve(y, preds,  pos_label = 'NORMAL')
+    preds = probs[:,0]
+    fpr, tpr, thresholds = metrics.roc_curve(y, preds,  pos_label = 'DGA')
     roc_auc = metrics.auc(fpr, tpr)
     t = roc_auc_score(y, preds)
+    q = tpr - fpr
+  
+    ind = np.argmax(tpr - fpr)
+    print(thresholds[ind])
     # method I: plt
     import matplotlib.pyplot as plt
     plt.title('Receiver Operating Characteristic')
@@ -441,8 +448,12 @@ def ROC_curve(clf, x, y):
     plt.ylim([0, 1])
     plt.ylabel('True Positive Rate')
     plt.xlabel('False Positive Rate')
+      
+    plt.plot(fpr, tpr, 'b', label = 'AUC2 = %0.2f' % roc_auc)
+    plt.legend(loc = 'lower right')
 
-    conf_matrix = confusion_matrix(y, clf.predict(x), labels = ['NORMAL', 'DGA'])
+    plt.show()
+    conf_matrix = confusion_matrix(y, clf.predict(x), labels = ['DGA', 'NORMAL'])
 
 
     percent_mean_of_conf_matrix_arrays = conf_matrix.copy()
@@ -527,6 +538,8 @@ def ROC_Cross(classifier, X, y):
 
     tprs = []
     aucs = []
+    thresholds = []
+
     mean_fpr = np.linspace(0, 1, 100)
 
     fig, ax = plt.subplots()
@@ -563,6 +576,13 @@ def ROC_Cross(classifier, X, y):
     plt.show()
     q = 3
 
+
+def getProbas (clf, x):
+    threshold = 0.5615
+    #threshold = 0.44
+    prob_preds = clf.predict_proba(x)
+    preds = ['NORMAL' if prob_preds[i][1]>= threshold else 'DGA' for i in range(len(prob_preds))]
+    return preds
 def learnDump():
     
     datasetLegit=featuresFromFile('./calculatedParametersLegitCombined25000_14.txt', '\n',14)
@@ -625,7 +645,7 @@ def learnDump():
     #q2 = statistics.stdev(b)
     #q3 = np.std(a)
    
-    ROC_Cross(clf, x, y)
+    #ROC_Cross(clf, x, y)
     #y = np.array(y).reshape(np.array(y).shape[0],-1)
    
     #
@@ -640,40 +660,43 @@ def learnDump():
     
     #mean_of_conf_matrix_arrays = np.mean(conf_matrix_list_of_arrays, axis = 0)
     clf.fit(x_train, y_train)
-
-    #conf_matrix = confusion_matrix(y_test, clf.predict(x_test), labels = ['NORMAL', 'DGA'])
+    #ROC_curve(clf, x_test, y_test)
+    preds = getProbas(clf, x_test)
+    #q = clf.predict(x_test)
+    
+    conf_matrix = confusion_matrix(y_test, preds, labels = ['DGA', 'NORMAL'])
 
     
 
-    ROC_curve(clf, x_test, y_test)
+    #ROC_curve(clf, x_test, y_test)
 
 
-    cv = StratifiedKFold(n_splits = 10, shuffle = True,  random_state = 1)
+    #cv = StratifiedKFold(n_splits = 10, shuffle = True,  random_state = 1)
     #timeOfPrediction(clf, 'yandex.ru', 'vk.com')
     
    
-    conf_matrix_list_of_arrays = []
-    for val_train_index, val_test_index in cv.split(x_train,y_train):
+    #conf_matrix_list_of_arrays = []
+    #for val_train_index, val_test_index in cv.split(x_train,y_train):
         
-        val_x_train, val_x_test = x_train[val_train_index], x_train[val_test_index]
-        val_y_train, val_y_test = y_train[val_train_index], y_train[val_test_index]
-        clf.fit(val_x_train, val_y_train)
+        #val_x_train, val_x_test = x_train[val_train_index], x_train[val_test_index]
+        #val_y_train, val_y_test = y_train[val_train_index], y_train[val_test_index]
+        #clf.fit(val_x_train, val_y_train)
         #predict_mas = clf.predict(val_x_test) #подумать
-        conf_matrix = confusion_matrix(val_y_test, clf.predict(val_x_test), labels = ['NORMAL', 'DGA'])
-        conf_matrix_list_of_arrays.append(conf_matrix)   
-    mean_pf_conf_matrix = np.mean(conf_matrix)
-    mean_of_conf_matrix_arrays = np.mean(conf_matrix_list_of_arrays, axis = 0)
-    percent_mean_of_conf_matrix_arrays = mean_of_conf_matrix_arrays.copy()
-    percent_mean_of_conf_matrix_arrays[0][0] = (percent_mean_of_conf_matrix_arrays[0][0]/4000)*100
-    percent_mean_of_conf_matrix_arrays[0][1] = (percent_mean_of_conf_matrix_arrays[0][1]/4000)*100
-    percent_mean_of_conf_matrix_arrays[1][0] = (percent_mean_of_conf_matrix_arrays[1][0]/4000)*100
-    percent_mean_of_conf_matrix_arrays[1][1] = (percent_mean_of_conf_matrix_arrays[1][1]/4000)*100
+        #onf_matrix = confusion_matrix(val_y_test, clf.predict(val_x_test), labels = ['NORMAL', 'DGA'])
+        #conf_matrix_list_of_arrays.append(conf_matrix)   
+    #mean_pf_conf_matrix = np.mean(conf_matrix)
+    #mean_of_conf_matrix_arrays = np.mean(conf_matrix_list_of_arrays, axis = 0)
+    #percent_mean_of_conf_matrix_arrays = mean_of_conf_matrix_arrays.copy()
+    #percent_mean_of_conf_matrix_arrays[0][0] = (percent_mean_of_conf_matrix_arrays[0][0]/4000)*100
+    #percent_mean_of_conf_matrix_arrays[0][1] = (percent_mean_of_conf_matrix_arrays[0][1]/4000)*100
+    #percent_mean_of_conf_matrix_arrays[1][0] = (percent_mean_of_conf_matrix_arrays[1][0]/4000)*100
+    #percent_mean_of_conf_matrix_arrays[1][1] = (percent_mean_of_conf_matrix_arrays[1][1]/4000)*100
 
-    #percent_mean_of_conf_matrix_arrays = conf_matrix.copy()
-    #percent_mean_of_conf_matrix_arrays[0][0] = (percent_mean_of_conf_matrix_arrays[0][0]/10000)*100
-    #percent_mean_of_conf_matrix_arrays[0][1] = (percent_mean_of_conf_matrix_arrays[0][1]/10000)*100
-    #percent_mean_of_conf_matrix_arrays[1][0] = (percent_mean_of_conf_matrix_arrays[1][0]/10000)*100
-    #percent_mean_of_conf_matrix_arrays[1][1] = (percent_mean_of_conf_matrix_arrays[1][1]/10000)*100
+    percent_mean_of_conf_matrix_arrays = conf_matrix.copy()
+    percent_mean_of_conf_matrix_arrays[0][0] = (percent_mean_of_conf_matrix_arrays[0][0]/10000)*100
+    percent_mean_of_conf_matrix_arrays[0][1] = (percent_mean_of_conf_matrix_arrays[0][1]/10000)*100
+    percent_mean_of_conf_matrix_arrays[1][0] = (percent_mean_of_conf_matrix_arrays[1][0]/10000)*100
+    percent_mean_of_conf_matrix_arrays[1][1] = (percent_mean_of_conf_matrix_arrays[1][1]/10000)*100
 
 
     TP = percent_mean_of_conf_matrix_arrays[0][0]
@@ -681,7 +704,7 @@ def learnDump():
     FP = percent_mean_of_conf_matrix_arrays[1][0]
     TN = percent_mean_of_conf_matrix_arrays[1][1]
    # 
-    accuracy = (TP + TN)/(TP+TN+FP+FN)
+    accuracy = (percent_mean_of_conf_matrix_arrays[0][0] + percent_mean_of_conf_matrix_arrays[1][1])/(percent_mean_of_conf_matrix_arrays[0][0]+percent_mean_of_conf_matrix_arrays[1][1]+ percent_mean_of_conf_matrix_arrays[0][1]+percent_mean_of_conf_matrix_arrays[1][0])
     precision = TP/(TP+FP)
     recall = TP/(TP+FN) 
     Fscore = 2*(precision*recall)/(precision+recall)
