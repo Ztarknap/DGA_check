@@ -17,6 +17,7 @@ import smtplib
 import statistics
 import sklearn.metrics as metrics
 import matplotlib.pyplot as plt
+import skfuzzy as fuzz
 from sklearn.metrics import auc
 from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 from sklearn.model_selection import cross_val_score, train_test_split, RepeatedKFold, GridSearchCV
@@ -37,6 +38,7 @@ from sklearn.metrics import plot_roc_curve
 from math import log, e
 from itertools import tee, islice, chain
 from matplotlib import pyplot
+from skfuzzy import control as ctrl
 
 #avg_dga = 2.3809
 avg_sum = 0.1515
@@ -47,6 +49,48 @@ wordsegment.load()
 start_time = time.time()
 
 API_KEY = 'f6efc17a887ad7245fcff3458d45f257e290ceaa9d96f437920afad7cc3cb2ed'
+
+
+
+def initFuzzy():
+    
+    whoisBased = ctrl.Antecedent(np.arange(0,5,1),'whoisBased')
+    answerBased  = ctrl.Antecedent(np.arange(0,3,1),'answerBased')
+    threatRating = ctrl.Consequent(np.arange(0, 11, 1), 'threatRating')
+
+    #whoisBased_lo = fuzz.trimf(whoisBased, [0, 0, 2])
+    #whoisBased_md = fuzz.trimf(whoisBased, [0, 2, 4])
+    #whoisBased_hi = fuzz.trimf(whoisBased, [2, 4, 4])
+    #answerBased_lo = fuzz.trimf(answerBased, [0, 0, 1])
+    #answerBased_md = fuzz.trimf(answerBased, [0, 1, 2])
+    #answerBased_hi = fuzz.trimf(answerBased, [1, 2, 2])
+    whoisBased.automf(3, names = ['low', 'medium', 'high'])
+    answerBased.automf(3, names = ['low', 'medium', 'high'])
+    
+    threatRating['low'] = fuzz.trimf(threatRating.universe, [0, 0, 5])
+    threatRating['medium'] = fuzz.trimf(threatRating.universe, [0, 5, 10])
+    threatRating['high'] = fuzz.trimf(threatRating.universe, [5, 10, 10])
+
+    rule1 = ctrl.Rule(answerBased['low'] & whoisBased['low'] , threatRating['low'])
+    rule2 = ctrl.Rule(answerBased['medium'] | whoisBased['medium'] | whoisBased['high'], threatRating['medium'])
+    rule3 = ctrl.Rule(answerBased['high'] & (whoisBased['low']), threatRating['medium'])
+    rule4 = ctrl.Rule(answerBased['high'] & (whoisBased['medium'] | whoisBased['high']), threatRating['high'])
+    
+   
+
+
+    rating_ctrl = ctrl.ControlSystem([rule1, rule2, rule3, rule4])
+    rating = ctrl.ControlSystemSimulation(rating_ctrl)
+    result = fuzzyDecide(4, 2, rating)
+    q = 3
+
+def fuzzyDecide(whoisBasedpts, answerBasedpts, rating):
+    rating.input['whoisBased'] = whoisBasedpts
+    rating.input['answerBased'] = answerBasedpts
+    
+    rating.compute()
+    result = rating.output['threatRating']
+    return result
 
 def Optimize():
     param_grid = {}
@@ -439,7 +483,7 @@ def ROC_curve(clf, x, y):
     ind = np.argmax(tpr - fpr)
     print(thresholds[ind])
     # method I: plt
-    import matplotlib.pyplot as plt
+    
     plt.title('Receiver Operating Characteristic')
     plt.plot(fpr, tpr, 'g', label = 'AUC1 = %0.2f' % roc_auc)
     plt.legend(loc = 'lower right')
@@ -1426,7 +1470,8 @@ def switchMode(mode):
         '-checkName': lambda : checkName('yandex.ru'),
         '-new': lambda: NewTest(),
         '-sldLength': lambda: sldLength('im0-tub-ru.yandex.net'),
-        '-importance': lambda: featureImportanceCalc()
+        '-importance': lambda: featureImportanceCalc(),
+        '-fuzzy': lambda: initFuzzy()
        
 
     }
