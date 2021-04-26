@@ -54,9 +54,27 @@ API_KEY = 'f6efc17a887ad7245fcff3458d45f257e290ceaa9d96f437920afad7cc3cb2ed'
 
 def initFuzzy():
     
-    whoisBased = ctrl.Antecedent(np.arange(0,5,1),'whoisBased')
-    answerBased  = ctrl.Antecedent(np.arange(0,3,1),'answerBased')
-    threatRating = ctrl.Consequent(np.arange(0, 11, 1), 'threatRating')
+    #whoisBased = ctrl.Antecedent(np.arange(0,5,1),'whoisBased')
+    #answerBased  = ctrl.Antecedent(np.arange(0,3,1),'answerBased')
+    #threatrating = ctrl.Consequent(np.arange(0, 11, 1), 'threatrating')
+
+    
+    x_whois = np.arange(0,6,1)
+    x_answer= np.arange(0,3,1)
+    x_rating = np.arange(0, 11, 1)
+
+    # Generate fuzzy membership functions
+    whois_lo = fuzz.trimf(x_whois, [0, 0, 2])
+    whois_md = fuzz.trimf(x_whois, [0, 2, 4])
+    whois_hi = fuzz.trimf(x_whois, [2, 4, 5])
+    answer_lo = fuzz.trimf(x_answer, [0, 0, 1])
+    answer_md = fuzz.trimf(x_answer, [0, 1, 2])
+    answer_hi = fuzz.trimf(x_answer, [1, 2, 2])
+    rating_lo = fuzz.trimf(x_rating, [0, 0, 5])
+    rating_md = fuzz.trimf(x_rating, [0, 5, 10])
+    rating_hi = fuzz.trimf(x_rating, [5, 10, 10])
+
+
 
     #whoisBased_lo = fuzz.trimf(whoisBased, [0, 0, 2])
     #whoisBased_md = fuzz.trimf(whoisBased, [0, 2, 4])
@@ -64,24 +82,72 @@ def initFuzzy():
     #answerBased_lo = fuzz.trimf(answerBased, [0, 0, 1])
     #answerBased_md = fuzz.trimf(answerBased, [0, 1, 2])
     #answerBased_hi = fuzz.trimf(answerBased, [1, 2, 2])
-    whoisBased.automf(3, names = ['low', 'medium', 'high'])
-    answerBased.automf(3, names = ['low', 'medium', 'high'])
+    #whoisBased.automf(3, variable_type = 'quant', names = ['low', 'medium', 'high'])
+    #answerBased.automf(3, variable_type = 'quant', names = ['low', 'medium', 'high'])
     
-    threatRating['low'] = fuzz.trimf(threatRating.universe, [0, 0, 5])
-    threatRating['medium'] = fuzz.trimf(threatRating.universe, [0, 5, 10])
-    threatRating['high'] = fuzz.trimf(threatRating.universe, [5, 10, 10])
+    #threatrating['low'] = fuzz.trimf(threatrating.universe, [0, 0, 5])
+    #threatrating['medium'] = fuzz.trimf(threatrating.universe, [0, 5, 10])
+    #threatrating['high'] = fuzz.trimf(threatrating.universe, [5, 10, 10])
 
-    rule1 = ctrl.Rule(answerBased['low'] & whoisBased['low'] , threatRating['low'])
-    rule2 = ctrl.Rule(answerBased['medium'] | whoisBased['medium'] | whoisBased['high'], threatRating['medium'])
-    rule3 = ctrl.Rule(answerBased['high'] & (whoisBased['low']), threatRating['medium'])
-    rule4 = ctrl.Rule(answerBased['high'] & (whoisBased['medium'] | whoisBased['high']), threatRating['high'])
+    #rule1 = ctrl.Rule(answerBased['low'] & whoisBased['low'] , threatrating['low'])
+    #rule2 = ctrl.Rule(answerBased['medium'] | whoisBased['medium'] | whoisBased['high'], threatrating['medium'])
+    #rule3 = ctrl.Rule(answerBased['high'] & (whoisBased['low']), threatrating['medium'])
+    #rule4 = ctrl.Rule(answerBased['high'] & (whoisBased['medium'] | whoisBased['high']), threatrating['high'])
+
+    #rule1 = ctrl.Rule(answerBased['low'] | whoisBased['low'], threatrating['low'])
+    #rule2 = ctrl.Rule(answerBased['medium'], threatrating['medium'])
+    #rule3 = ctrl.Rule(answerBased['high'] | whoisBased['high'], threatrating['high'])
+
+    #rule1 = ctrl.Rule(answerBased['low'] | whoisBased['low'] , threatrating['low'])
+    #rule2 = ctrl.Rule(answerBased['medium'] | whoisBased['medium'] , threatrating['medium'])
+    #rule3 = ctrl.Rule(answerBased['high'] ), threatrating['medium'])
+    #rule4 = ctrl.Rule(answerBased['high'] | whoisBased['high'], threatrating['high'])
     
-   
+    # We need the activation of our fuzzy membership functions at these values.
+# The exact values 6.5 and 9.8 do not exist on our universes...
+# This is what fuzz.interp_membership exists for!
+    whois_level_lo = fuzz.interp_membership(x_whois, whois_lo,4)
+    whois_level_md = fuzz.interp_membership(x_whois, whois_md, 4)
+    whois_level_hi = fuzz.interp_membership(x_whois, whois_hi, 4)
+
+    answer_level_lo = fuzz.interp_membership(x_answer, answer_lo, 1)
+    answer_level_md = fuzz.interp_membership(x_answer, answer_md, 1)
+    answer_level_hi = fuzz.interp_membership(x_answer, answer_hi, 1)
+
+    # Now we take our rules and apply them. Rule 1 concerns bad food OR answerice.
+    # The OR operator means we take the maximum of these two.
+    active_rule1 = np.fmax(whois_level_lo, answer_level_lo)
+
+    # Now we apply this by clipping the top off the corresponding output
+    # membership function with `np.fmin`
+    rating_activation_lo = np.fmin(active_rule1, rating_lo)  # removed entirely to 0
+
+    # For rule 2 we connect acceptable answerice to medium ratingping
+    rating_activation_md = np.fmin(answer_level_md, rating_md)
+
+    # For rule 3 we connect high answerice OR high food with high ratingping
+    active_rule3 = np.fmax(whois_level_hi, answer_level_hi)
+    rating_activation_hi = np.fmin(active_rule3, rating_hi)
+    rating0 = np.zeros_like(x_rating)
+
+    aggregated = np.fmax(rating_activation_lo, np.fmax(rating_activation_md, rating_activation_hi))
+
+    # Calculate defuzzified result
+    ratt = fuzz.defuzz(x_rating, aggregated, 'centroid')
+
+    ratt2 = fuzz.defuzz(x_rating, aggregated, 'bisector')
+
+    ratt3 = fuzz.defuzz(x_rating, aggregated, 'mom')
 
 
-    rating_ctrl = ctrl.ControlSystem([rule1, rule2, rule3, rule4])
-    rating = ctrl.ControlSystemSimulation(rating_ctrl)
-    result = fuzzyDecide(4, 2, rating)
+    ratt4 = fuzz.defuzz(x_rating, aggregated, 'som')
+
+    ratt5 = fuzz.defuzz(x_rating, aggregated, 'lom')
+
+    rating_activation = fuzz.interp_membership(x_rating, aggregated, zaloopa_konya_ebanogo_blyat)  # for plot
+    #rating_ctrl = ctrl.ControlSystem([rule1, rule2,  rule3])
+    #rating = ctrl.ControlSystemSimulation(rating_ctrl)
+    #result = fuzzyDecide(0, 0, rating)
     q = 3
 
 def fuzzyDecide(whoisBasedpts, answerBasedpts, rating):
@@ -89,7 +155,7 @@ def fuzzyDecide(whoisBasedpts, answerBasedpts, rating):
     rating.input['answerBased'] = answerBasedpts
     
     rating.compute()
-    result = rating.output['threatRating']
+    result = rating.output['threatrating']
     return result
 
 def Optimize():
