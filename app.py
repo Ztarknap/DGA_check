@@ -17,6 +17,7 @@ import smtplib
 import statistics
 import sklearn.metrics as metrics
 import matplotlib.pyplot as plt
+import skfuzzy as fuzz
 from sklearn.metrics import auc
 from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 from sklearn.model_selection import cross_val_score, train_test_split, RepeatedKFold, GridSearchCV
@@ -33,10 +34,12 @@ from datetime import datetime
 from sklearn.model_selection import StratifiedKFold
 from Levenshtein import distance
 from sklearn.metrics import plot_roc_curve
-#from ip2geotools.databases.noncommercial import DbIpCity
+from ip2geotools.databases.noncommercial import DbIpCity
 from math import log, e
 from itertools import tee, islice, chain
 from matplotlib import pyplot
+from skfuzzy import control as ctrl
+
 
 #avg_dga = 2.3809
 avg_sum = 0.1515
@@ -47,6 +50,41 @@ wordsegment.load()
 start_time = time.time()
 
 API_KEY = 'f6efc17a887ad7245fcff3458d45f257e290ceaa9d96f437920afad7cc3cb2ed'
+
+
+def initFuzzy():
+    
+    whoisBased = ctrl.Antecedent(np.arange(0,5,1),'whoisBased')
+    answerBased  = ctrl.Antecedent(np.arange(0,3,1),'answerBased')
+    threatrating = ctrl.Consequent(np.arange(0, 11, 1), 'threatrating')
+
+    
+    whoisBased.automf(3, variable_type = 'quant', names = ['low', 'medium', 'high'])
+    answerBased.automf(3, variable_type = 'quant', names = ['low', 'medium', 'high'])
+    
+    threatrating['low'] = fuzz.trimf(threatrating.universe, [0, 0, 5])
+    threatrating['medium'] = fuzz.trimf(threatrating.universe, [0, 5, 10])
+    threatrating['high'] = fuzz.trimf(threatrating.universe, [5, 10, 10])
+
+    rule1 = ctrl.Rule(answerBased['low'] & whoisBased['low'] , threatrating['low'])
+    rule2 = ctrl.Rule(answerBased['medium'] & whoisBased['medium'], threatrating['medium'])
+    rule3 = ctrl.Rule(answerBased['high'] & (whoisBased['high']), threatrating['high'])
+
+
+    
+    rating_ctrl = ctrl.ControlSystem([rule1, rule2,  rule3])
+    rating = ctrl.ControlSystemSimulation(rating_ctrl)
+
+    return rating
+
+
+def fuzzyDecide(whoisBasedpts, answerBasedpts, rating):
+    rating.input['whoisBased'] = whoisBasedpts
+    rating.input['answerBased'] = answerBasedpts
+    
+    rating.compute()
+    result = rating.output['threatrating']
+    return result
 
 def Optimize():
     param_grid = {}
@@ -146,15 +184,11 @@ def featuresFromFile(filename, delim, num_args):
 
 def checkDate(whoisdate):
     
-    print(type(whoisdate))
-    try:
-        whoisdateLen = len(whoisdate)
-    except TypeError:
-        if (type(whoisdate)=='list'):
-            k = 2
-        return whoisdate
-    
-    return whoisdate[0]
+    if (type(whoisdate) == list):
+        return whoisdate[0]
+        
+    return whoisdate
+
 
 def entropyCalc(dnsName):
 
@@ -276,15 +310,19 @@ def vTcRatioCalc(dnsName):
     return ratio
 
 def whoisLookup(dnsName):
-    
+
     whoisFeatures=[]
     try:
         whoisInfo = whois.whois(dnsName)
-    except whois.parser.PywhoisError:
-        return ['Error, domain is unavaible', 'Error, domain is unavaible', 'Error, domain is unavaible', 'Error, domain is unavaible']
+    except Exception:
+        if ping(dnsName) is True: #скорее всего тут тормоза происходят
+            return ['WhoisError', 'WhoisError', 'WhoisError', 'WhoisError']
+        else:
+            return ['Error, domain is unavaible', 'Error, domain is unavaible', 'Error, domain is unavaible', 'Error, domain is unavaible']
+   
     
     if whoisInfo.text[0 : 9] == 'NOT FOUND' or whoisInfo.text =='' or len(dnsName.split('.')) == 1:
-         return ['No info', 'No info', 'No info', 'No info']
+        return ['No info', 'No info', 'No info', 'No info']
     else:
        
 
@@ -295,11 +333,13 @@ def whoisLookup(dnsName):
         if whoisInfo.creation_date is None:
             whoisFeatures.append('No info')
         else:
-            whoisFeatures.append(whoisInfo.creation_date)
+            creation_date = checkDate(whoisInfo.creation_date)
+            whoisFeatures.append(creation_date)
         if whoisInfo.expiration_date is None:
             whoisFeatures.append('No info')
         else:
-            whoisFeatures.append(whoisInfo.expiration_date)
+            expiration_date = checkDate(whoisInfo.expiration_date)
+            whoisFeatures.append(expiration_date)
         if whoisInfo.org is None:
             whoisFeatures.append('No info')
         else:
@@ -1147,6 +1187,7 @@ def previous(iterable):
     return zip(prevs, items)
     
 
+
 def geoTest(ipaddr):
     try:
         if (ipaddr[0] == ':' and ipaddr[1] == ':' and ipaddr[2] == 'f' and ipaddr[3] == 'f' and ipaddr[4] == 'f' and ipaddr[5] == 'f' and ipaddr[6] == ':'):
@@ -1170,106 +1211,67 @@ def extractDate(Date):
         datetime_DateOutput = checkDate(datetime_Date)
     return datetime_Date
 
-def threatEvaluateOnlyAPI(dnsName):
-    whoisResults = whoisLookup(dnsName)   
-    reg = whoisResults[0]
-    creation_datePre = whoisResults[1]
-    expiration_datePre = whoisResults[2]
-    org = whoisResults[3]
-    mas_indicators = []
-    datetime_time = datetime.now()
-    if (reg == 'No info' or reg == 'Error, domain is unavaible'):
-        mas_indicators.append(1)
-    else:
-        mas_indicators.append(0)
-    if (creation_datePre != 'Error, domain is unavaible' and creation_datePre != 'No info' and creation_datePre != 'WhoisError'):
-        try:
-            creation_date = checkDate(creation_datePre)
-            creation_timedelta = datetime_time - creation_date
-            delta_1 = creation_timedelta.days*24 + creation_timedelta.seconds/3600
-            if (delta_1 <= 1):
-                mas_indicators.append(1)
-            else:
-                mas_indicators.append(0)
-        except TypeError:
-            mas_indicators.append(1)
-    else:
-        mas_indicators.append(1)
-        
-        
+def threatEvaluate(countryCheck, nxresult, reg, creation_datePre, expiration_datePre, org, time, rating):
 
-    if (expiration_datePre != 'Error, domain is unavaible' and expiration_datePre != 'No info' and expiration_datePre != 'WhoisError'):
-        try:
-            expiration_date = checkDate(expiration_datePre)
-            expiration_timedelta = expiration_date - datetime_time 
-            delta_2 = expiration_timedelta.days
-            if (delta_2 <= 1):
-                mas_indicators.append(1)
-            else:
-                mas_indicators.append(0)
-        except TypeError:
-            mas_indicators.append(1)
-    else:
-        mas_indicators.append(1)
-    
-         
-    if (org == 'Error, domain is unavaible' or org == 'No info'):
-        mas_indicators.append(1)
-    else:
-        mas_indicators.append(0)
-    
-    return mas_indicators
-
-    
-
-
-
-def threatEvaluate(countryCheck, nxresult, reg, creation_datePre, expiration_datePre, org, time):
-    
     intCountryCheck = int(countryCheck)
     intnxresult = int(nxresult)
     datetime_time = extractDate(time)
     queryType =''
     
 
-    threatPoints = 0
+    whoisPoints = 0
+    answerPoints = 0
+    
 
     if (reg == 'No info' or reg == 'Error, domain is unavaible'):
-        threatPoints += 1
+        whoisPoints += 1
     if (creation_datePre != 'Error, domain is unavaible' and creation_datePre != 'No info' and creation_datePre != 'WhoisError'):
         creation_date = checkDate(creation_datePre)
         creation_timedelta = datetime_time - creation_date
         if ((creation_timedelta.days*24 + creation_timedelta.seconds/3600) <= 1):
-            threatPoints +=1
+            whoisPoints +=1
 
     if (expiration_datePre != 'Error, domain is unavaible' and expiration_datePre != 'No info' and expiration_datePre != 'WhoisError'):
         expiration_date = checkDate(expiration_datePre)
         expiration_timedelta = expiration_date - datetime_time 
         if (expiration_timedelta.days <= 1):
-            threatPoints +=1
+            whoisPoints +=1
 
     
          
     if (org == 'Error, domain is unavaible' or org == 'No info'):
-        threatPoints += 1
+        whoisPoints += 1
+
     if (intCountryCheck > 2):
-        threatPoints +=1
+        answerPoints +=1
     
 
     if (intnxresult > 1):
-        threatPoints +=1
+        answerPoints +=1
   
     
     
     
 
-    if (threatPoints < 3):
-        queryType = 'Benign'
-    if (threatPoints > 2 ):
-        queryType = 'Malicious'
+    #if (threatPoints < 3):
+        #queryType = 'Benign'
+    #if (threatPoints > 2 ):
+        #queryType = 'Malicious'
     
+
+    fuzzy_result = fuzzyDecide(whoisPoints, answerPoints, rating)
+    
+    if fuzzy_result > 5:
+        queryType = 'Malicious'
+    else: 
+        queryType ='Benign'
+
+
     return queryType
 
+def ping(dnsName):
+    command = ['ping', '-n', '1', dnsName]
+    return subprocess.call(command) == 0
 
 def checkIPs(addrs):
     responseList = []
@@ -1282,45 +1284,56 @@ def checkIPs(addrs):
     counter = collections.Counter(responseList)
     return len(counter)
 
-def sendNotification(dnsName, answer, time, hostname, status,  image, country_number, registrar, creation_date, expiration_date, organistaion,  NXDOMAIN_query_count, domainStatus, queryType):
-    content = (dnsName + answer + time + hostname + image)
+def sendNotification(dnsName, answerPre, time, hostname, status,  image, country_number, registrar, creation_date, expiration_date, organistaion,  NXDOMAIN_query_count, domainStatus, queryType):
+    answer = ''
+    if answerPre is None:
+        answer = 'None'
+    if answerPre == '':
+        answer = 'None'
+    else:
+        answer = answerPre
+    msg = f"""\
+    Subject: Security Notification\n
+    To: admtestdns123@gmail.com'
+    From: notificationdnstest@gmail.com
+    \nMalicious DGA query {dnsName} detected at {hostname} from {image} . Domain resolved in {answer} , time of query is {time} . Domain is {domainStatus}"""
+    #msg.set_content('Malicious DGA query '+ dnsName + ' detected at '+ hostname + ' from ' + image + '. Domain resolved in ' + answer + ', time of query is ' + time + '. Domain is ' + domainStatus) 
     mail = smtplib.SMTP('smtp.gmail.com', 587)
     mail.ehlo()
     mail.starttls()
     mail.login('notificationdnstest@gmail.com', '123456dns')
-    mail.sendmail('notificationdnstest@gmail.com', 'admtestdns123@gmail.com', content)
+    mail.sendmail('notificationdnstest@gmail.com', 'admtestdns123@gmail.com', msg)
     mail.close()
     #adm mail pass 123456dns
 def filterDGA():
+
+    fuzzy_rating = initFuzzy()
+
     counter1 = 0
     domainsDict = {}
     NXDomainDict = {}
+    whoisDict = {}
     dgaDomains = []
     dgaQuery = []
     dataset =[]
-   
-    flag = subprocess.call(["powershell.exe", "C:\\Users\\Yan\\Desktop\\diplom\\passivedns.ps1"])
-    
-    con = sqlite3.connect("./databases/passDNSnew12.db")
+    whoisLookupCounter = 0
+    flag = subprocess.call(["powershell.exe","C:\\Users\\Server\\Documents\\DGAcheck\\db\\passivedns.ps1"])
+    clf = load(dumpName)
+    con = sqlite3.connect("C:\\Users\\Server\\Documents\\DGAcheck\\db\\psvDNS.db")
     cursor = con.cursor()
-    cursor.execute("""SELECT DISTINCT query, answer, image, hostname FROM dns""")
+    cursor.execute("""SELECT DISTINCT query, answer FROM dns WHERE class IS ?""", (None,))
     records = cursor.fetchall() 
     dataset = [row[0] for row in records]
     for row in records:
 
-        if row[1] is None or row[1]=='':
-        
-            key = row[2]+'_LIMIT_'+row[3]
-            NXDomainDict.setdefault(key, [])
-            NXDomainDict[key].append('NXDOMAIN')   
-        else:
+        if row[1] is not None and row[1]!='':
 
             key = row[0]
             domainsDict.setdefault(key, [])
             domainsDict[key].append(row[1])
         
 
-    con.close()
+    
     clf = load(dumpName)
     for prevdnsName, dnsName in previous(dataset):
             if prevdnsName == dnsName:
@@ -1328,8 +1341,6 @@ def filterDGA():
             else:
                 features = calcParam(dnsName, prevdnsName)
                 featuresNormalized = np.array(features).reshape(np.array(features).shape[0],-1)
-                print(type(featuresNormalized))
-                print(featuresNormalized)
                 featuresNormalizedLast = featuresNormalized
             counter1 += 1
             
@@ -1344,59 +1355,86 @@ def filterDGA():
     print('NUMBER OF CHECKS')
     print(counter1) 
     
-    con = sqlite3.connect("D:\databases\passDNSnew12.db")
+    
     dgaQueries = []
     for dnsName in dgaDomains:
 
         
-        cursor = con.cursor()
+        
         cursor.execute("""SELECT * FROM dns WHERE query = ?""", (dnsName,))
     
         dgaQuery = [row for row in cursor.fetchall()]
+        
         for query in dgaQuery:
+            if query[2] is None or query[1] == '':
+                key = query[4]+'_LIMIT_'+query[6]
+                NXDomainDict.setdefault(key, [])
+                NXDomainDict[key].append('NXDOMAIN') 
             dgaQueries.append(query)
         
-    con.close()
-    con1 = sqlite3.connect("D:\databases\DGAclassified.db")
     
-    cursor1 = con1.cursor()
     
 
     for queryRow in dgaQueries:
-        cursor1.execute("SELECT query, answer,  time, hostname, status, image FROM suspicious WHERE query = ?  AND answer =? AND time = ? AND hostname = ?  AND status = ? AND image = ?", 
-        (queryRow[0], queryRow[1], queryRow[2], queryRow[3], queryRow[4], queryRow[5]))
-        result = cursor1.fetchone()
+        cursor.execute("SELECT ID from suspicious WHERE parentRecord = ?", 
+        (queryRow[0],))
+        result = cursor.fetchone()
         if result:
             continue
         else:
             try: 
-                countryCheck = checkIPs(domainsDict[queryRow[0]])
+                countryCheck = checkIPs(domainsDict[queryRow[1]])
 
             except KeyError:
                 countryCheck = 0
             
-            test = queryRow[5]+'_LIMIT_'+queryRow[3]
+            keyCombination = queryRow[4]+'_LIMIT_'+queryRow[6]
             try:
-                nxresult = len(NXDomainDict[test])
+                nxresult = len(NXDomainDict[keyCombination])
             except Exception:
                 nxresult = 0
-            whoisResults = whoisLookup(queryRow[0])
+            key = queryRow[1]
+            if (whoisDict.get(key) is not None):
+                whoisResults = whoisDict[key]
+                reg = whoisResults[0]
+                creation_date = whoisResults[1]
+                expiration_date = whoisResults[2]
+                org = whoisResults[3]
+
+            else:
+                whoisResults = whoisLookup(queryRow[1])
+                            
+                reg = whoisResults[0]
+                creation_date = whoisResults[1]
+                expiration_date = whoisResults[2]
+                
+                if (type(whoisResults[3]) == list):
+                    org = whoisResults[3][0]
+                else:
+                    org = whoisResults[3]
+                whoisDict.setdefault(key,  [reg, creation_date, expiration_date, org])
+                whoisLookupCounter+=1
+                print(queryRow[1])
+                print(whoisLookupCounter)
+               
+
             
-            reg = whoisResults[0]
-            creation_date = whoisResults[1]
-            expiration_date = whoisResults[2]
-            org = whoisResults[3]
-            queryType = threatEvaluate(countryCheck, nxresult, reg, creation_date, expiration_date, org, queryRow[2])
+            queryType = threatEvaluate(countryCheck, nxresult, reg, creation_date, expiration_date, org, queryRow[3], fuzzy_rating)
             if (reg == 'Error, domain is unavaible' and creation_date == 'Error, domain is unavaible' and expiration_date == 'Error, domain is unavaible' and org == 'Error, domain is unavaible'):
                 domainStatus = 'Down'
             else:
                 domainStatus ='Up'
-            cursor1.execute("INSERT INTO suspicious (query , answer, time, hostname, status, image, country_number, registrar, creation_date, expiration_date, organisation, NXDOMAIN_query_count, domainStatus, queryType) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", 
-            (queryRow[0], queryRow[1], queryRow[2], queryRow[3], queryRow[4], queryRow[5],  countryCheck, reg, creation_date, expiration_date, org, nxresult , domainStatus, queryType))
+            cursor.execute("INSERT INTO suspicious (query , answer, time, hostname, status, image, country_number, registrar, creation_date, expiration_date, organisation, NXDOMAIN_query_count, domainStatus, queryType, parentRecord) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", 
+            (queryRow[1], queryRow[2], queryRow[3], queryRow[4], queryRow[5], queryRow[6],  countryCheck, reg, creation_date, expiration_date, org, nxresult , domainStatus, queryType, queryRow[0]))
             if (queryType == 'Malicious'): 
-                sendNotification(queryRow[0], queryRow[1], queryRow[2], queryRow[3], queryRow[4], queryRow[5],  countryCheck, reg, creation_date, expiration_date, org, nxresult , domainStatus, queryType)
-    con1.commit()
-    con1.close()
+                sendNotification(queryRow[1], queryRow[2], queryRow[3], queryRow[4], queryRow[5], queryRow[6],  countryCheck, reg, creation_date, expiration_date, org, nxresult , domainStatus, queryType)
+        
+    for dnsName in dgaDomains:
+            cursor.execute("UPDATE dns SET class = 'DGA' WHERE query = ?", (dnsName,))   
+    cursor.execute("UPDATE dns SET class = 'REAL' WHERE class IS ?", (None,))   
+    con.commit()
+    con.close()
+
 
 def checkName(dnsName):
     prevdnsName = dnsName
