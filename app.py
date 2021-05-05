@@ -40,6 +40,8 @@ from itertools import tee, islice, chain
 from matplotlib import pyplot
 from skfuzzy import control as ctrl
 
+dumpName = 'RFdump.joblib'
+
 
 #avg_dga = 2.3809
 avg_sum = 0.1515
@@ -67,8 +69,8 @@ def initFuzzy():
     threatrating['high'] = fuzz.trimf(threatrating.universe, [5, 10, 10])
 
     rule1 = ctrl.Rule(answerBased['low'] & whoisBased['low'] , threatrating['low'])
-    rule2 = ctrl.Rule(answerBased['medium'] & whoisBased['medium'], threatrating['medium'])
-    rule3 = ctrl.Rule(answerBased['high'] & (whoisBased['high']), threatrating['high'])
+    rule2 = ctrl.Rule(answerBased['medium'] | (answerBased['low'] & (whoisBased['medium'] | whoisBased['high'])), threatrating['medium'])
+    rule3 = ctrl.Rule((answerBased['high'] | (answerBased['medium'] & whoisBased['high'])), threatrating['high'])
 
 
     
@@ -1225,18 +1227,22 @@ def threatEvaluate(countryCheck, nxresult, reg, creation_datePre, expiration_dat
 
     if (reg == 'No info' or reg == 'Error, domain is unavaible'):
         whoisPoints += 1
+
     if (creation_datePre != 'Error, domain is unavaible' and creation_datePre != 'No info' and creation_datePre != 'WhoisError'):
         creation_date = checkDate(creation_datePre)
         creation_timedelta = datetime_time - creation_date
         if ((creation_timedelta.days*24 + creation_timedelta.seconds/3600) <= 1):
             whoisPoints +=1
+    else:
+        whoisPoints +=1
 
     if (expiration_datePre != 'Error, domain is unavaible' and expiration_datePre != 'No info' and expiration_datePre != 'WhoisError'):
         expiration_date = checkDate(expiration_datePre)
         expiration_timedelta = expiration_date - datetime_time 
         if (expiration_timedelta.days <= 1):
             whoisPoints +=1
-
+    else:
+        whoisPoints +=1
     
          
     if (org == 'Error, domain is unavaible' or org == 'No info'):
@@ -1246,7 +1252,7 @@ def threatEvaluate(countryCheck, nxresult, reg, creation_datePre, expiration_dat
         answerPoints +=1
     
 
-    if (intnxresult > 1):
+    if (intnxresult > 3):
         answerPoints +=1
   
     
@@ -1261,7 +1267,7 @@ def threatEvaluate(countryCheck, nxresult, reg, creation_datePre, expiration_dat
 
     fuzzy_result = fuzzyDecide(whoisPoints, answerPoints, rating)
     
-    if fuzzy_result > 5:
+    if fuzzy_result > 5.000000000000001:
         queryType = 'Malicious'
     else: 
         queryType ='Benign'
@@ -1317,7 +1323,7 @@ def filterDGA():
     dgaQuery = []
     dataset =[]
     whoisLookupCounter = 0
-    flag = subprocess.call(["powershell.exe","C:\\Users\\Server\\Documents\\DGAcheck\\db\\passivedns.ps1"])
+    #flag = subprocess.call(["powershell.exe","C:\\Users\\Server\\Documents\\DGAcheck\\db\\passivedns.ps1"])
     clf = load(dumpName)
     con = sqlite3.connect("C:\\Users\\Server\\Documents\\DGAcheck\\db\\psvDNS.db")
     cursor = con.cursor()
@@ -1366,7 +1372,7 @@ def filterDGA():
         dgaQuery = [row for row in cursor.fetchall()]
         
         for query in dgaQuery:
-            if query[2] is None or query[1] == '':
+            if query[2] is None or query[2] == '':
                 key = query[4]+'_LIMIT_'+query[6]
                 NXDomainDict.setdefault(key, [])
                 NXDomainDict[key].append('NXDOMAIN') 
@@ -1476,7 +1482,7 @@ if __name__ == "__main__":
     if sys.argv[1]!='-h':
         dumpName='undefined.joblib'
         if sys.argv[2]=='-RF':
-            dumpName='RF13.joblib'
+            dumpName='RFdump.joblib'
 
         if sys.argv[2]=='-CART':
             dumpName='CARTdump.joblib'
