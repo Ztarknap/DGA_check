@@ -54,25 +54,25 @@ API_KEY = 'f6efc17a887ad7245fcff3458d45f257e290ceaa9d96f437920afad7cc3cb2ed'
 
 def initFuzzy():
     
-    #whoisBased = ctrl.Antecedent(np.arange(0,5,1),'whoisBased')
-    #answerBased  = ctrl.Antecedent(np.arange(0,3,1),'answerBased')
-    #threatrating = ctrl.Consequent(np.arange(0, 11, 1), 'threatrating')
+    whoisBased = ctrl.Antecedent(np.arange(0,5,1),'whoisBased')
+    answerBased  = ctrl.Antecedent(np.arange(0,3,1),'answerBased')
+    threatrating = ctrl.Consequent(np.arange(0, 11, 1), 'threatrating')
 
     
-    x_whois = np.arange(0,6,1)
-    x_answer= np.arange(0,3,1)
-    x_rating = np.arange(0, 11, 1)
+    #x_whois = np.arange(0,6,1)
+    ##x_answer= np.arange(0,3,1)
+    #x_rating = np.arange(0, 11, 1)
 
     # Generate fuzzy membership functions
-    whois_lo = fuzz.trimf(x_whois, [0, 0, 2])
-    whois_md = fuzz.trimf(x_whois, [0, 2, 4])
-    whois_hi = fuzz.trimf(x_whois, [2, 4, 5])
-    answer_lo = fuzz.trimf(x_answer, [0, 0, 1])
-    answer_md = fuzz.trimf(x_answer, [0, 1, 2])
-    answer_hi = fuzz.trimf(x_answer, [1, 2, 2])
-    rating_lo = fuzz.trimf(x_rating, [0, 0, 5])
-    rating_md = fuzz.trimf(x_rating, [0, 5, 10])
-    rating_hi = fuzz.trimf(x_rating, [5, 10, 10])
+    #whois_lo = fuzz.trimf(x_whois, [0, 0, 2])
+    #whois_md = fuzz.trimf(x_whois, [0, 2, 4])
+    #whois_hi = fuzz.trimf(x_whois, [2, 4, 5])
+    #answer_lo = fuzz.trimf(x_answer, [0, 0, 1])
+    #answer_md = fuzz.trimf(x_answer, [0, 1, 2])
+    #answer_hi = fuzz.trimf(x_answer, [1, 2, 2])
+    #rating_lo = fuzz.trimf(x_rating, [0, 0, 5])
+    #rating_md = fuzz.trimf(x_rating, [0, 5, 10])
+    #rating_hi = fuzz.trimf(x_rating, [5, 10, 10])
 
 
 
@@ -80,19 +80,19 @@ def initFuzzy():
     #whoisBased_md = fuzz.trimf(whoisBased, [0, 2, 4])
     #whoisBased_hi = fuzz.trimf(whoisBased, [2, 4, 4])
     #answerBased_lo = fuzz.trimf(answerBased, [0, 0, 1])
-    #answerBased_md = fuzz.trimf(answerBased, [0, 1, 2])
+   # answerBased_md = fuzz.trimf(answerBased, [0, 1, 2])
     #answerBased_hi = fuzz.trimf(answerBased, [1, 2, 2])
-    #whoisBased.automf(3, variable_type = 'quant', names = ['low', 'medium', 'high'])
-    #answerBased.automf(3, variable_type = 'quant', names = ['low', 'medium', 'high'])
+    whoisBased.automf(3, variable_type = 'quant', names = ['low', 'medium', 'high'])
+    answerBased.automf(3, variable_type = 'quant', names = ['low', 'medium', 'high'])
     
-    #threatrating['low'] = fuzz.trimf(threatrating.universe, [0, 0, 5])
-    #threatrating['medium'] = fuzz.trimf(threatrating.universe, [0, 5, 10])
-    #threatrating['high'] = fuzz.trimf(threatrating.universe, [5, 10, 10])
+    threatrating['low'] = fuzz.trimf(threatrating.universe, [0, 0, 4])
+    threatrating['medium'] = fuzz.trimf(threatrating.universe, [4, 5, 9])
+    threatrating['high'] = fuzz.trimf(threatrating.universe, [10, 10, 10])
 
-    #rule1 = ctrl.Rule(answerBased['low'] & whoisBased['low'] , threatrating['low'])
-    #rule2 = ctrl.Rule(answerBased['medium'] | whoisBased['medium'] | whoisBased['high'], threatrating['medium'])
-    #rule3 = ctrl.Rule(answerBased['high'] & (whoisBased['low']), threatrating['medium'])
-    #rule4 = ctrl.Rule(answerBased['high'] & (whoisBased['medium'] | whoisBased['high']), threatrating['high'])
+    rule1 = ctrl.Rule(answerBased['low'] & whoisBased['low'] , threatrating['low'])
+    rule2 = ctrl.Rule(answerBased['medium'] & whoisBased['medium'], threatrating['medium'])
+    rule3 = ctrl.Rule(answerBased['high'] & (whoisBased['high']), threatrating['high'])
+
 
     #rule1 = ctrl.Rule(answerBased['low'] | whoisBased['low'], threatrating['low'])
     #rule2 = ctrl.Rule(answerBased['medium'], threatrating['medium'])
@@ -106,48 +106,48 @@ def initFuzzy():
     # We need the activation of our fuzzy membership functions at these values.
 # The exact values 6.5 and 9.8 do not exist on our universes...
 # This is what fuzz.interp_membership exists for!
-    whois_level_lo = fuzz.interp_membership(x_whois, whois_lo,4)
-    whois_level_md = fuzz.interp_membership(x_whois, whois_md, 4)
-    whois_level_hi = fuzz.interp_membership(x_whois, whois_hi, 4)
+    #whois_level_lo = fuzz.interp_membership(x_whois, whois_lo,4)
+    #whois_level_md = fuzz.interp_membership(x_whois, whois_md, 4)
+    #whois_level_hi = fuzz.interp_membership(x_whois, whois_hi, 4)
 
-    answer_level_lo = fuzz.interp_membership(x_answer, answer_lo, 1)
-    answer_level_md = fuzz.interp_membership(x_answer, answer_md, 1)
-    answer_level_hi = fuzz.interp_membership(x_answer, answer_hi, 1)
+    #answer_level_lo = fuzz.interp_membership(x_answer, answer_lo, 2)
+    #answer_level_md = fuzz.interp_membership(x_answer, answer_md, 2)
+    #answer_level_hi = fuzz.interp_membership(x_answer, answer_hi, 2)
 
     # Now we take our rules and apply them. Rule 1 concerns bad food OR answerice.
     # The OR operator means we take the maximum of these two.
-    active_rule1 = np.fmax(whois_level_lo, answer_level_lo)
+    #active_rule1 = np.fmin(whois_level_hi, answer_level_hi)
 
     # Now we apply this by clipping the top off the corresponding output
     # membership function with `np.fmin`
-    rating_activation_lo = np.fmin(active_rule1, rating_lo)  # removed entirely to 0
+    #rating_activation_lo = np.fmin(active_rule1, rating_lo)  # removed entirely to 0
 
     # For rule 2 we connect acceptable answerice to medium ratingping
-    rating_activation_md = np.fmin(answer_level_md, rating_md)
+    #rating_activation_md = np.fmin(answer_level_md, rating_md)
 
     # For rule 3 we connect high answerice OR high food with high ratingping
-    active_rule3 = np.fmax(whois_level_hi, answer_level_hi)
-    rating_activation_hi = np.fmin(active_rule3, rating_hi)
-    rating0 = np.zeros_like(x_rating)
+    #active_rule3 = np.fmax(whois_level_hi, answer_level_hi)
+    #rating_activation_hi = np.fmin(active_rule3, rating_hi)
+    #rating0 = np.zeros_like(x_rating)
 
-    aggregated = np.fmax(rating_activation_lo, np.fmax(rating_activation_md, rating_activation_hi))
+    #aggregated = np.fmax(rating_activation_lo, np.fmax(rating_activation_md, rating_activation_hi))
 
     # Calculate defuzzified result
-    ratt = fuzz.defuzz(x_rating, aggregated, 'centroid')
+   #ratt = fuzz.defuzz(x_rating, aggregated, 'centroid')
 
-    ratt2 = fuzz.defuzz(x_rating, aggregated, 'bisector')
+    #ratt2 = fuzz.defuzz(x_rating, aggregated, 'bisector')
 
-    ratt3 = fuzz.defuzz(x_rating, aggregated, 'mom')
+    #ratt3 = fuzz.defuzz(x_rating, aggregated, 'mom')
 
 
-    ratt4 = fuzz.defuzz(x_rating, aggregated, 'som')
+    #ratt4 = fuzz.defuzz(x_rating, aggregated, 'som')
 
-    ratt5 = fuzz.defuzz(x_rating, aggregated, 'lom')
+    #ratt5 = fuzz.defuzz(x_rating, aggregated, 'lom')
 
-    rating_activation = fuzz.interp_membership(x_rating, aggregated, zaloopa_konya_ebanogo_blyat)  # for plot
-    #rating_ctrl = ctrl.ControlSystem([rule1, rule2,  rule3])
-    #rating = ctrl.ControlSystemSimulation(rating_ctrl)
-    #result = fuzzyDecide(0, 0, rating)
+    #rating_activation = fuzz.interp_membership(x_rating, aggregated, ratt)  # for plot
+    rating_ctrl = ctrl.ControlSystem([rule1, rule2,  rule3])
+    rating = ctrl.ControlSystemSimulation(rating_ctrl)
+    result = fuzzyDecide(2, 1, rating)
     q = 3
 
 def fuzzyDecide(whoisBasedpts, answerBasedpts, rating):
@@ -550,18 +550,17 @@ def ROC_curve(clf, x, y):
     print(thresholds[ind])
     # method I: plt
     
-    plt.title('Receiver Operating Characteristic')
+    plt.title('ROC-кривая Random Forest')
     plt.plot(fpr, tpr, 'g', label = 'AUC1 = %0.2f' % roc_auc)
-    plt.legend(loc = 'lower right')
+    plt.legend('',frameon=False)
+    
     plt.plot([0, 1], [0, 1],'r--')
     plt.xlim([0, 1])
     plt.ylim([0, 1])
     plt.ylabel('True Positive Rate')
     plt.xlabel('False Positive Rate')
       
-    plt.plot(fpr, tpr, 'b', label = 'AUC2 = %0.2f' % roc_auc)
-    plt.legend(loc = 'lower right')
-
+    
     plt.show()
     conf_matrix = confusion_matrix(y, clf.predict(x), labels = ['DGA', 'NORMAL'])
 
@@ -760,21 +759,14 @@ def learnDump():
    
     #
     #clf.fit(x,y)
-   
-    #for train_index, test_index in cv.split(x,y):
-        #x_train, x_test = x[train_index], x[test_index]
-        #y_train, y_test = y[train_index], y[test_index]
-        #clf.fit(x_train, y_train)
-        #conf_matrix = confusion_matrix(y_test, clf.predict(x_test), labels = ['NORMAL', 'DGA'])
-        #conf_matrix_list_of_arrays.append(conf_matrix)
-    
+
     #mean_of_conf_matrix_arrays = np.mean(conf_matrix_list_of_arrays, axis = 0)
     clf.fit(x_train, y_train)
     #ROC_curve(clf, x_test, y_test)
-    preds = getProbas(clf, x_test)
+    #preds = getProbas(clf, x_test)
     #q = clf.predict(x_test)
     
-    conf_matrix = confusion_matrix(y_test, preds, labels = ['DGA', 'NORMAL'])
+    conf_matrix = confusion_matrix(y_test, clf.predict(x_test), labels = ['DGA', 'NORMAL'])
 
     
 
@@ -783,16 +775,22 @@ def learnDump():
 
     #cv = StratifiedKFold(n_splits = 10, shuffle = True,  random_state = 1)
     #timeOfPrediction(clf, 'yandex.ru', 'vk.com')
+       
+    #for train_index, test_index in cv.split(x_train,yy_train):
+        #x_train, x_test = x[train_index], x[test_index]
+        #y_train, y_test = y[train_index], y[test_index]
+        #clf.fit(x_train, y_train)
+        #conf_matrix = confusion_matrix(y_test, clf.predict(x_test), labels = ['NORMAL', 'DGA'])
+        #conf_matrix_list_of_arrays.append(conf_matrix)
     
    
-    #conf_matrix_list_of_arrays = []
+    conf_matrix_list_of_arrays = []
     #for val_train_index, val_test_index in cv.split(x_train,y_train):
         
         #val_x_train, val_x_test = x_train[val_train_index], x_train[val_test_index]
         #val_y_train, val_y_test = y_train[val_train_index], y_train[val_test_index]
         #clf.fit(val_x_train, val_y_train)
-        #predict_mas = clf.predict(val_x_test) #подумать
-        #onf_matrix = confusion_matrix(val_y_test, clf.predict(val_x_test), labels = ['NORMAL', 'DGA'])
+        #conf_matrix = confusion_matrix(val_y_test, clf.predict(val_x_test), labels = ['DGA', 'NORMAL'])
         #conf_matrix_list_of_arrays.append(conf_matrix)   
     #mean_pf_conf_matrix = np.mean(conf_matrix)
     #mean_of_conf_matrix_arrays = np.mean(conf_matrix_list_of_arrays, axis = 0)
@@ -1222,7 +1220,7 @@ def calcParam(dnsName, prevdnsName):
     params.append(LMSlength(dnsName)) #3
     start_time_1 = time.time()
     params.append(entropyCalc(dnsName)) #4
-    q1 = time.time() - start_time_1
+    
     params.append(vTcRatioCalc(dnsName)) #5
     start_time_2 = time.time()
     params.append(dotRatio(dnsName)) #6
@@ -1241,11 +1239,11 @@ def calcParam(dnsName, prevdnsName):
 
 
     
-    #print('PARAMS')
-    #print(params)
+    #0.0020003318786621094 print('PARAMS')
+    #0.000972747802734375print(params)
     paramsNorm = np.array(params).reshape(1, -1)
     paramsNorm = preprocessing.normalize(paramsNorm)
-    
+    q1 = time.time() - start_time_1
     print('NORMALIZED:')
     print(paramsNorm)
     return paramsNorm
@@ -1517,7 +1515,13 @@ def checkName(dnsName):
     q = clf.predict_proba(featuresNormalized)
     print(q)
 
+def calcParamTest(dnsName, prevdnsName):
+    start_time_1 = time.time()
+    for countCalc in range(0,100):
+        calcParam(dnsName, prevdnsName)
 
+    q1 = time.time() - start_time_1
+    t = 1
 
 def switchMode(mode):
     switcher={
@@ -1537,7 +1541,8 @@ def switchMode(mode):
         '-new': lambda: NewTest(),
         '-sldLength': lambda: sldLength('im0-tub-ru.yandex.net'),
         '-importance': lambda: featureImportanceCalc(),
-        '-fuzzy': lambda: initFuzzy()
+        '-fuzzy': lambda: initFuzzy(),
+        '-calc': lambda: calcParamTest('im0-tub-ru.yandex.net', 'google.com')
        
 
     }
@@ -1549,7 +1554,7 @@ if __name__ == "__main__":
     if sys.argv[1]!='-h':
         dumpName='undefined.joblib'
         if sys.argv[2]=='-RF':
-            dumpName='RF13.joblib'
+            dumpName='RFdump.joblib'
 
         if sys.argv[2]=='-CART':
             dumpName='CARTdump.joblib'
