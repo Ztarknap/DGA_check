@@ -18,6 +18,7 @@ import statistics
 import sklearn.metrics as metrics
 import matplotlib.pyplot as plt
 import skfuzzy as fuzz
+import pandas as pd
 from sklearn.metrics import auc
 from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 from sklearn.model_selection import cross_val_score, train_test_split, RepeatedKFold, GridSearchCV
@@ -39,6 +40,8 @@ from math import log, e
 from itertools import tee, islice, chain
 from matplotlib import pyplot
 from skfuzzy import control as ctrl
+import networkx as nx
+
 
 #avg_dga = 2.3809
 avg_sum = 0.1515
@@ -1523,6 +1526,85 @@ def calcParamTest(dnsName, prevdnsName):
     q1 = time.time() - start_time_1
     t = 1
 
+def getWords(dnsName):
+    dnsNameWords = []
+    for part in dnsName:
+        
+        segmentedName = wordsegment.segment(part)
+        for word in segmentedName:
+            try:
+                if wordsegment.UNIGRAMS[word] > 0: 
+                    dnsNameWords.append(word)
+            except Exception:
+                continue
+
+    return dnsNameWords
+
+
+def getLCW(dnsName1Pre, dnsName2Pre):
+    maxLength=0
+    LCW = ''
+    dnsName1Pre = dnsName1Pre.replace('www.','')
+    dnsName1Pre = dnsName1Pre.replace('-', '.')
+    dnsName1 = dnsName1Pre.split('.')
+
+    dnsName2Pre = dnsName2Pre.replace('www.','')
+    dnsName2Pre = dnsName2Pre.replace('-', '.')
+    dnsName2 = dnsName2Pre.split('.')
+
+    dnsName1Words = getWords(dnsName1)
+    dnsName2Words = getWords(dnsName2)
+    for word1 in dnsName1Words:
+        for word2 in dnsName2Words:
+            if word1 == word2 and len(word1) > maxLength:
+                LCW = word1
+                maxLength = len(LCW)
+
+    
+    return LCW
+
+
+def getDatasetNGDGA(filename):
+    datasetPre = pd.read_csv(filename, sep = '\t')
+    print(datasetPre)
+    dataset = datasetPre.iloc[:, 0]
+    print('--------------------------------------------------------------------------------------------------------')
+    print(dataset)
+    ngdgaList = dataset.values.tolist()
+    print(type(ngdgaList))
+    return ngdgaList
+def graphTest(dnsNamePre):
+    #dict_dataset = extractData('./dictionary_dga.txt', '\n')
+    
+    ngdgaList = getDatasetNGDGA('./suppobox.txt')
+
+    for dnsName1 in ngdgaList:
+        for dnsName2 in ngdgaList:
+            if dnsName1 != dnsName2:
+                t = getLCW(dnsName1, dnsName2)
+
+    G = nx.Graph()
+    G.add_edge('A', 'B')
+    G.add_edge('B', 'D')
+    G.add_edge('A', 'C')
+    G.add_edge('C', 'D')
+    print(nx.shortest_path(G, 'A', 'D', weight='weight'))
+    wordMas = []
+    dnsName = dnsNamePre.replace('www.','')
+    dnsName = dnsName.replace('-', '.')
+    dnsName = dnsName.split('.')
+    for part in dnsName:
+        segmentedName = wordsegment.segment(part)
+        for word in segmentedName:
+            try:
+                if wordsegment.UNIGRAMS[word] > 0:
+                    wordMas.append(word)
+            except Exception:
+                continue
+            
+    t = 1
+
+
 def switchMode(mode):
     switcher={
 
@@ -1542,7 +1624,8 @@ def switchMode(mode):
         '-sldLength': lambda: sldLength('im0-tub-ru.yandex.net'),
         '-importance': lambda: featureImportanceCalc(),
         '-fuzzy': lambda: initFuzzy(),
-        '-calc': lambda: calcParamTest('im0-tub-ru.yandex.net', 'google.com')
+        '-calc': lambda: calcParamTest('im0-tub-ru.yandex.net', 'google.com'),
+        '-gr': lambda: graphTest('api.google.googletoy.playman.com')
        
 
     }
@@ -1550,6 +1633,7 @@ def switchMode(mode):
 
 
 if __name__ == "__main__":
+
 
     if sys.argv[1]!='-h':
         dumpName='undefined.joblib'
