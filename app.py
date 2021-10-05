@@ -1547,10 +1547,12 @@ def getLCW(dnsName1Pre, dnsName2Pre):
     dnsName1Pre = dnsName1Pre.replace('www.','')
     dnsName1Pre = dnsName1Pre.replace('-', '.')
     dnsName1 = dnsName1Pre.split('.')
+    dnsName1.pop()
 
     dnsName2Pre = dnsName2Pre.replace('www.','')
     dnsName2Pre = dnsName2Pre.replace('-', '.')
     dnsName2 = dnsName2Pre.split('.')
+    dnsName2.pop()
 
     dnsName1Words = getWords(dnsName1)
     dnsName2Words = getWords(dnsName2)
@@ -1572,18 +1574,32 @@ def getDatasetNGDGA(filename):
     print(dataset)
     ngdgaList = dataset.values.tolist()
     print(type(ngdgaList))
+
     return ngdgaList
 def graphTest(dnsNamePre):
     #dict_dataset = extractData('./dictionary_dga.txt', '\n')
     
     ngdgaList = getDatasetNGDGA('./suppobox.txt')
-
+    dictDNS = []
     for dnsName1 in ngdgaList:
         for dnsName2 in ngdgaList:
             if dnsName1 != dnsName2:
-                t = getLCW(dnsName1, dnsName2)
+                LCW = getLCW(dnsName1, dnsName2)
+                print(LCW)
+                dictDNS.append(LCW)
 
-    G = nx.Graph()
+    G = nx.Graph
+    for word in dictDNS:
+        G.add_node(word)
+        
+    for node1 in dictDNS:
+        for node2 in dictDNS:
+            for dnsName in ngdgaList:
+                if node1 != node2:
+                    if (node1 in getWords(dnsName)) and (node2 in getWords(dnsName)):
+                        G.add_edge(node1, node2)
+
+    
     G.add_edge('A', 'B')
     G.add_edge('B', 'D')
     G.add_edge('A', 'C')
