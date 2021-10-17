@@ -53,7 +53,7 @@ start_time = time.time()
 
 API_KEY = 'f6efc17a887ad7245fcff3458d45f257e290ceaa9d96f437920afad7cc3cb2ed'
 
-
+dicts = ['suppobox','ngioweb','matsnu']
 
 def initFuzzy():
     
@@ -986,8 +986,46 @@ def NewTest():
     print('Execution time ')
     print("--- %s seconds ---" % (time.time() - start_time))
 
+
+def extractDictionaries():
+    for dic in dicts:
+        ngdgaList = getDatasetNGDGA('./'+dic+'_extract.txt')
+        dictDNS = []
+        for dnsName1 in ngdgaList:
+            for dnsName2 in ngdgaList:
+                if dnsName1 != dnsName2:
+                    LCW = getLCW(dnsName1, dnsName2)
+                    print(LCW)
+                    if LCW != '':  
+                        dictDNS.append(LCW)
+        dictDNS_distinct = list(dict.fromkeys(dictDNS))
+        listDump(dictDNS_distinct,'./'+dic+'_dict')
+        
+
+#def checkDictionary(dictionary, dnsName):
+    
+def listDump(DNSlist, filename):
+    with open(filename, 'w') as f:
+        for item in DNSlist:
+            f.write(item + '\n')
+    print(filename + ' doomped')
+
+def NGDGAcheck(dnsName):
+    isNGDGA = 0 
+    for dic in dicts:
+        if isNGDGA == 0:
+            isNGDGA = checkDictionary(dic, dnsName) 
+    return isNGDGA
+        
+
+    
+
+
+
+
 def loadTest():
     
+    normalNames = []
     correctPredictions=0
     correctPredictionsLegit=0
     correctPredictionsDGA=0
@@ -1038,6 +1076,8 @@ def loadTest():
         if (clf.predict(featuresNormalized)) == ['NORMAL']:
             correctPredictionsLegit=correctPredictionsLegit+1
             correctPredictions=correctPredictions+1
+            normalNames.append(dnsName)
+
 
 
         
@@ -1586,7 +1626,8 @@ def graphTest(dnsNamePre):
             if dnsName1 != dnsName2:
                 LCW = getLCW(dnsName1, dnsName2)
                 print(LCW)
-                dictDNS.append(LCW)
+                if LCW != '':
+                    dictDNS.append(LCW)
 
     G = nx.Graph
     for word in dictDNS:
@@ -1641,7 +1682,9 @@ def switchMode(mode):
         '-importance': lambda: featureImportanceCalc(),
         '-fuzzy': lambda: initFuzzy(),
         '-calc': lambda: calcParamTest('im0-tub-ru.yandex.net', 'google.com'),
-        '-gr': lambda: graphTest('api.google.googletoy.playman.com')
+        '-gr': lambda: graphTest('api.google.googletoy.playman.com'),
+        '-tt': lambda: listDump(['ep', 'dva', 'raz'], './filename.txt'),
+        '-extract': lambda: extractDictionaries()
        
 
     }
