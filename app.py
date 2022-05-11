@@ -18,6 +18,7 @@ import statistics
 import sklearn.metrics as metrics
 import matplotlib.pyplot as plt
 import skfuzzy as fuzz
+import pandas as pd
 from sklearn.metrics import auc
 from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 from sklearn.model_selection import cross_val_score, train_test_split, RepeatedKFold, GridSearchCV
@@ -52,6 +53,49 @@ wordsegment.load()
 start_time = time.time()
 
 API_KEY = 'f6efc17a887ad7245fcff3458d45f257e290ceaa9d96f437920afad7cc3cb2ed'
+
+
+dicts = ['suppobox','ngioweb','matsnu']
+
+
+def FuzzyTest():
+    
+    whoisBased = ctrl.Antecedent(np.arange(0,5,1),'whoisBased')
+    answerBased  = ctrl.Antecedent(np.arange(0,3,1),'answerBased')
+    threatrating = ctrl.Consequent(np.arange(0, 11, 1), 'threatrating')
+
+    
+    whoisBased.automf(3, variable_type = 'quant', names = ['low', 'medium', 'high'])
+    answerBased.automf(3, variable_type = 'quant', names = ['low', 'medium', 'high'])
+    whoisBased['medium'].view()
+    plt.show()
+
+    answerBased['medium'].view()
+    plt.show()
+    threatrating['low'] = fuzz.trimf(threatrating.universe, [0, 0, 5])
+    threatrating['medium'] = fuzz.trimf(threatrating.universe, [0, 5, 10])
+    threatrating['high'] = fuzz.trimf(threatrating.universe, [5, 10, 10])
+    threatrating['low'].view()
+    plt.show()
+    rule1 = ctrl.Rule(answerBased['low'] & whoisBased['low'] , threatrating['low'])
+    rule2 = ctrl.Rule(answerBased['medium'] | (answerBased['low'] & (whoisBased['medium'] | whoisBased['high'])), threatrating['medium'])
+    rule3 = ctrl.Rule((answerBased['high'] | (answerBased['medium'] & whoisBased['high'])), threatrating['high'])
+
+
+    
+    rating_ctrl = ctrl.ControlSystem([rule1, rule2,  rule3])
+    rating = ctrl.ControlSystemSimulation(rating_ctrl)
+
+    whoisBasedpts = 4
+    answerBasedpts = 1
+
+    rating.input['whoisBased'] = whoisBasedpts
+    rating.input['answerBased'] = answerBasedpts
+    
+    rating.compute()
+    result = rating.output['threatrating']
+    
+    k = 3
 
 
 def initFuzzy():
@@ -1252,7 +1296,7 @@ def threatEvaluate(countryCheck, nxresult, reg, creation_datePre, expiration_dat
         answerPoints +=1
     
 
-    if (intnxresult > 3):
+    if (intnxresult > 1):
         answerPoints +=1
   
     
@@ -1298,12 +1342,13 @@ def sendNotification(dnsName, answerPre, time, hostname, status,  image, country
         answer = 'None'
     else:
         answer = answerPre
-    msg = f"""\
-    Subject: Security Notification\n
-    To: admtestdns123@gmail.com'
-    From: notificationdnstest@gmail.com
-    \nMalicious DGA query {dnsName} detected at {hostname} from {image} . Domain resolved in {answer} , time of query is {time} . Domain is {domainStatus}"""
+    #msg = f"""\
+    #Subject: Security Notification\n
+    #To: admtestdns123@gmail.com'
+    #From: notificationdnstest@gmail.com
+    #\nMalicious DGA query {dnsName} detected at {hostname} from {image} . Domain resolved in {answer} , time of query is {time} . Domain is {domainStatus}"""
     #msg.set_content('Malicious DGA query '+ dnsName + ' detected at '+ hostname + ' from ' + image + '. Domain resolved in ' + answer + ', time of query is ' + time + '. Domain is ' + domainStatus) 
+    msg = 'Malicious DGA query '+ dnsName + ' detected at '+ hostname + ' from ' + image + '. Domain resolved in ' + answer + ', time of query is ' + time + '. Domain is ' + domainStatus
     mail = smtplib.SMTP('smtp.gmail.com', 587)
     mail.ehlo()
     mail.starttls()
@@ -1452,6 +1497,118 @@ def checkName(dnsName):
     print(q)
 
 
+def calcParamTest(dnsName, prevdnsName):
+    start_time_1 = time.time()
+    for countCalc in range(0,100):
+        calcParam(dnsName, prevdnsName)
+
+    q1 = time.time() - start_time_1
+    t = 1
+
+def getWords(dnsName):
+    #тут полный пиздец
+    dnsNameWords = []
+    for part in dnsName:
+        
+        segmentedName = wordsegment.segment(part)
+        for word in segmentedName:
+            try:
+                if wordsegment.UNIGRAMS[word] > 0: 
+                    dnsNameWords.append(word)
+            except Exception:
+                continue
+
+    return dnsNameWords
+
+def getLCW(dnsName1Pre, dnsName2Pre):
+    maxLength=0
+    LCW = ''
+    dnsName1Pre = dnsName1Pre.replace('www.','')
+    dnsName1Pre = dnsName1Pre.replace('-', '.')
+    dnsName1 = dnsName1Pre.split('.')
+    dnsName1.pop()
+
+    dnsName2Pre = dnsName2Pre.replace('www.','')
+    dnsName2Pre = dnsName2Pre.replace('-', '.')
+    dnsName2 = dnsName2Pre.split('.')
+    dnsName2.pop()
+
+    dnsName1Words = getWords(dnsName1)
+    dnsName2Words = getWords(dnsName2)
+    for word1 in dnsName1Words:
+        for word2 in dnsName2Words:
+            if word1 == word2 and len(word1) > maxLength:
+                LCW = word1
+                maxLength = len(LCW)
+
+    
+    return LCW
+
+
+def getDatasetNGDGA(filename):
+    datasetPre = pd.read_csv(filename, sep = '\t')
+    print(datasetPre)
+    dataset = datasetPre.iloc[:, 0]
+    print('--------------------------------------------------------------------------------------------------------')
+    print(dataset)
+    ngdgaList = dataset.values.tolist()
+    print(type(ngdgaList))
+
+    return ngdgaList
+
+def getWordsFormDic(filename):
+    datasetPre = pd.read_csv(filename, sep = '\t')
+    print(datasetPre)
+    
+    print('--------------------------------------------------------------------------------------------------------')
+    print(datasetPre)
+    ngdgaList = datasetPre.values.tolist()
+    print(type(ngdgaList))
+
+    return ngdgaList
+
+
+def extractDictionaries():
+    for dic in dicts:
+        ngdgaList = getDatasetNGDGA('./'+dic+'_extract.txt')
+        dictDNS = []
+        for dnsName1 in ngdgaList:
+            for dnsName2 in ngdgaList:
+                if dnsName1 != dnsName2:
+                    LCW = getLCW(dnsName1, dnsName2)
+                    print(LCW)
+                    if LCW != '':  
+                        dictDNS.append(LCW)
+        dictDNS_distinct = list(dict.fromkeys(dictDNS))
+        listDump(dictDNS_distinct,'./'+dic+'_dict')
+        
+
+#def checkDictionary(dictionary, dnsName):
+    
+def listDump(DNSlist, filename):
+    with open(filename, 'w') as f:
+        for item in DNSlist:
+            f.write(item + '\n')
+    print(filename + ' doomped')
+
+def NGDGAcheck(dnsName):
+    isNGDGA = 0 
+    for dic in dicts:
+        if isNGDGA == 0:
+            isNGDGA = checkDictionary(dic, dnsName) 
+    return isNGDGA
+
+def checkDictionary(dictionary, dnsName):
+    wordList = getWordsFormDic(dictionary + '_dict')
+    wordCount = 0
+    for word in getWords(dnsName):
+        if word in wordList:
+            wordCount = wordCount + 1
+    if wordCount >=2:
+        return 1
+    else:
+        return 0
+
 
 def switchMode(mode):
     switcher={
@@ -1470,7 +1627,9 @@ def switchMode(mode):
         '-checkName': lambda : checkName('yandex.ru'),
         '-new': lambda: NewTest(),
         '-sldLength': lambda: sldLength('im0-tub-ru.yandex.net'),
-        '-importance': lambda: featureImportanceCalc()
+        '-importance': lambda: featureImportanceCalc(),
+        '-fuzzyTest': lambda: FuzzyTest(),
+        '-ngdga': lambda: NGDGAcheck('demigelike.net')
        
 
     }
