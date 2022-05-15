@@ -19,6 +19,7 @@ import sklearn.metrics as metrics
 import matplotlib.pyplot as plt
 import skfuzzy as fuzz
 import pandas as pd
+import subprocess
 from sklearn.metrics import auc
 from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 from sklearn.model_selection import cross_val_score, train_test_split, RepeatedKFold, GridSearchCV
@@ -1348,13 +1349,13 @@ def sendNotification(dnsName, answerPre, time, hostname, status,  image, country
     #From: notificationdnstest@gmail.com
     #\nMalicious DGA query {dnsName} detected at {hostname} from {image} . Domain resolved in {answer} , time of query is {time} . Domain is {domainStatus}"""
     #msg.set_content('Malicious DGA query '+ dnsName + ' detected at '+ hostname + ' from ' + image + '. Domain resolved in ' + answer + ', time of query is ' + time + '. Domain is ' + domainStatus) 
-    msg = 'Malicious DGA query '+ dnsName + ' detected at '+ hostname + ' from ' + image + '. Domain resolved in ' + answer + ', time of query is ' + time + '. Domain is ' + domainStatus
-    mail = smtplib.SMTP('smtp.gmail.com', 587)
-    mail.ehlo()
-    mail.starttls()
-    mail.login('notificationdnstest@gmail.com', '123456dns')
-    mail.sendmail('notificationdnstest@gmail.com', 'admtestdns123@gmail.com', msg)
-    mail.close()
+    #msg = 'Malicious DGA query '+ dnsName + ' detected at '+ hostname + ' from ' + image + '. Domain resolved in ' + answer + ', time of query is ' + time + '. Domain is ' + domainStatus
+    #mail = smtplib.SMTP('smtp.gmail.com', 587)
+    #mail.ehlo()
+    #mail.starttls()
+    #mail.login('notificationdnstest@gmail.com', '123456dns')
+    #mail.sendmail('notificationdnstest@gmail.com', 'admtestdns123@gmail.com', msg)
+    #mail.close()
     #adm mail pass 123456dns
 def filterDGA():
 
@@ -1367,6 +1368,7 @@ def filterDGA():
     dgaDomains = []
     dgaQuery = []
     dataset =[]
+    NGDGAToCheck = []
     whoisLookupCounter = 0
     #flag = subprocess.call(["powershell.exe","C:\\Users\\Server\\Documents\\DGAcheck\\db\\passivedns.ps1"])
     clf = load(dumpName)
@@ -1401,10 +1403,22 @@ def filterDGA():
                 else:
 
                     dgaDomains.append(dnsName)
+            else:
+                NGDGAToCheck.append(dnsName)
+    
+    for ngdga in NGDGAToCheck:
+        if (NGDGAcheck(ngdga)) == 1:
+            if ngdga in dgaDomains:
+                continue
+            else:
+                dgaDomains.append(ngdga)
+
                 
                 
     print('NUMBER OF CHECKS')
     print(counter1) 
+
+    t = 1
     
     
     dgaQueries = []
@@ -1479,6 +1493,8 @@ def filterDGA():
             (queryRow[1], queryRow[2], queryRow[3], queryRow[4], queryRow[5], queryRow[6],  countryCheck, reg, creation_date, expiration_date, org, nxresult , domainStatus, queryType, queryRow[0]))
             if (queryType == 'Malicious'): 
                 sendNotification(queryRow[1], queryRow[2], queryRow[3], queryRow[4], queryRow[5], queryRow[6],  countryCheck, reg, creation_date, expiration_date, org, nxresult , domainStatus, queryType)
+                if queryRow[2] is not None and queryRow[2] != '':
+                    subprocess.call('C:\Windows\System32\powershell.exe New-NetFirewallRule -DisplayName "Block Site" -Direction Outbound –LocalPort Any -Protocol Any -Action Block -RemoteAddress'+query[2].replace('::ffff:',''),shell = True)
         
     for dnsName in dgaDomains:
             cursor.execute("UPDATE dns SET class = 'DGA' WHERE query = ?", (dnsName,))   
@@ -1509,7 +1525,7 @@ def getWords(dnsName):
     #тут полный пиздец
     dnsNameWords = []
     for part in dnsName:
-        
+    
         segmentedName = wordsegment.segment(part)
         for word in segmentedName:
             try:
@@ -1566,6 +1582,7 @@ def getWordsFormDic(filename):
     print(type(ngdgaList))
 
     return ngdgaList
+    
 
 
 def extractDictionaries():
@@ -1601,9 +1618,20 @@ def NGDGAcheck(dnsName):
 def checkDictionary(dictionary, dnsName):
     wordList = getWordsFormDic(dictionary + '_dict')
     wordCount = 0
-    for word in getWords(dnsName):
-        if word in wordList:
-            wordCount = wordCount + 1
+    dnsName = dnsName.replace('www.','')
+    dnsName = dnsName.replace('-', '.')
+    dnsNameWords = dnsName.split('.')
+    dnsNameWords.pop()
+    print(type(wordList))
+     
+    print(wordList)
+
+    for word in getWords(dnsNameWords):
+        for wordDic in wordList:
+            tttt = wordDic[0]
+            print(type(wordDic[0]))
+            if word == wordDic[0]:
+                wordCount = wordCount + 1
     if wordCount >=2:
         return 1
     else:
