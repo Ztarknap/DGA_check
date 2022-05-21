@@ -977,8 +977,8 @@ def loadTest():
     LegitPointsCurrent = []
     LegitSumPoints = []
     GeneratedSumPoints = []
-    GeneratedTestSet=extractData(r'./GeneratedTestSet.txt',',')
-    LegitTestSet=extractData(r'./LegitTestSet.txt',',')
+    GeneratedTestSet=extractData(r'./ngioweb_extrac100.txt','\t')
+    LegitTestSet=extractData(r'./LegitTestSet100.php',',')
     #con = sqlite3.connect("./databases/passDNS.db")
     #cursor = con.cursor()
     #cursor.execute("""SELECT query FROM dns""")
@@ -1011,7 +1011,8 @@ def loadTest():
         #LegitProb.append(LegitProbCurrent)
         #LegitIndicatorsCurrent = threatEvaluateOnlyAPI(dnsName)
         #LegitIndicators.append(LegitIndicatorsCurrent)
-        if (clf.predict(featuresNormalized)) == ['NORMAL']:
+        #if (clf.predict(featuresNormalized)) == ['NORMAL']:
+        if (NGDGAcheck(dnsName)) == 0:
             correctPredictionsLegit=correctPredictionsLegit+1
             correctPredictions=correctPredictions+1
 
@@ -1049,7 +1050,7 @@ def loadTest():
         #featuresNormalizedLast = featuresNormalized
         #GeneratedProbCurrent = clf.predict_proba(featuresNormalized)  
         #GeneratedProb.append(GeneratedProbCurrent)
-        if (clf.predict(featuresNormalized)) == ['DGA']:
+        if (NGDGAcheck(dnsName)) == 1:
             correctPredictionsDGA=correctPredictionsDGA+1
             correctPredictions=correctPredictions+1
 
@@ -1501,6 +1502,7 @@ def filterDGA():
     cursor.execute("UPDATE dns SET class = 'REAL' WHERE class IS ?", (None,))   
     con.commit()
     con.close()
+    t = 'aboba'
 
 
 def checkName(dnsName):
